@@ -1,6 +1,7 @@
 import express, { Response } from "express";
 import * as fs from "fs";
 import * as shortid from "shortid";
+import http from "axios";
 const app = express();
 const port = 9090;
 const sharp = require("sharp");
@@ -12,6 +13,13 @@ app.use(express.json());
 app.use(fileUpload());
 
 app.use(express.static("public"));
+app.use(express.urlencoded({ extended: true }));
+
+async function loadByUrl(url: string, res: Response) {
+  const buffer = (await http.get(url, { responseType: "arraybuffer" })).data;
+  uploadImage(buffer, res);
+  return;
+}
 
 async function uploadImage(buffer: Buffer, res: Response) {
   const path = `${process.cwd()}/public/images`;
@@ -67,8 +75,9 @@ app.delete("/file", async (req, res) => {
   });
   res.send("Файл удален!");
 });
-
 app.post("/upload", async (req, res) => {
+  console.log(req.files, "files");
+  console.log(req.body, "body");
   if (!req.files || !req.files.file || Array.isArray(req.files.file)) return;
   const mimetype = req.files.file.mimetype.split("/");
   const nameArray = req.files.file.name.split(".");
@@ -86,6 +95,12 @@ app.post("/upload", async (req, res) => {
         break;
     }
   }
+});
+app.post("/upload_url", async (req, res) => {
+  if (!req.body.url) return res.status(500).send("Нет ссылки на файл");
+  const url = req.body.url;
+  loadByUrl(url, res);
+  return;
 });
 
 app.listen(port, () => {
