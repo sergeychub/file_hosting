@@ -1,18 +1,20 @@
 import express, { Response } from "express";
-import cors from "cors";
-import fileUpload from "express-fileupload";
-import sharp from "sharp";
-import fs from "fs";
-import shortid from "shortid";
+import * as fs from "fs";
+import * as shortid from "shortid";
 const app = express();
 const port = 9090;
+const sharp = require("sharp");
+const fileUpload = require("express-fileupload");
+const cors = require("cors");
 
 app.use(cors());
 app.use(express.json());
 app.use(fileUpload());
 
+app.use(express.static("public"));
+
 async function uploadImage(buffer: Buffer, res: Response) {
-  const path = "images";
+  const path = `${process.cwd()}/public/images`;
   const data = await sharp(buffer).webp().toBuffer();
   const newName = shortid.generate();
   if (!fs.existsSync(path)) {
@@ -25,7 +27,7 @@ async function uploadImage(buffer: Buffer, res: Response) {
 }
 
 async function uploadPDF(buffer: Buffer, res: Response) {
-  const path = "pdf";
+  const path = `${process.cwd()}/public/pdf`;
   const newName = shortid.generate();
   if (!fs.existsSync(path)) {
     fs.mkdirSync(path, { recursive: true });
@@ -46,21 +48,21 @@ async function uploadFile(buffer: Buffer, res: Response, type: string) {
 
 app.delete("/img", async (req, res) => {
   const name = req.body.name;
-  fs.unlink(`images/${name}`, (err) => {
+  fs.unlink(`${process.cwd()}/public/images/${name}`, (err) => {
     console.log(err);
   });
   res.send("Файл удален!");
 });
 app.delete("/pdf", async (req, res) => {
   const name = req.body.name;
-  fs.unlink(`pdf/${name}`, (err) => {
+  fs.unlink(`${process.cwd()}/public/pdf/${name}`, (err) => {
     console.log(err);
   });
   res.send("Файл удален!");
 });
 app.delete("/file", async (req, res) => {
   const name = req.body.name;
-  fs.unlink(`${name}`, (err) => {
+  fs.unlink(`${process.cwd()}/public/${name}`, (err) => {
     console.log(err);
   });
   res.send("Файл удален!");
@@ -83,26 +85,6 @@ app.post("/upload", async (req, res) => {
         uploadFile(req.files.file.data, res, type);
         break;
     }
-  }
-});
-
-app.get("/:route/:fileName", async (req, res) => {
-  const route = req.params.route;
-  const fileName = req.params.fileName;
-  const path = `${__dirname}/${route}/${fileName}`;
-  if (fs.existsSync(path)) {
-    res.sendFile(path);
-  } else {
-    res.status(500).send(`Файла не существует`);
-  }
-});
-app.get("/:fileName", async (req, res) => {
-  const fileName = req.params.fileName;
-  const path = `${__dirname}/${fileName}`;
-  if (fs.existsSync(path)) {
-    res.download(path);
-  } else {
-    res.status(500).send(`Файла не существует`);
   }
 });
 
