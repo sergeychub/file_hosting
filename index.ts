@@ -2,6 +2,7 @@ import express, { Response } from "express";
 import * as fs from "fs";
 import * as shortid from "shortid";
 import http from "axios";
+var colors = require("colors/safe");
 const app = express();
 const port = 9090;
 const sharp = require("sharp");
@@ -16,22 +17,46 @@ app.use(express.static("public"));
 app.use(express.urlencoded({ extended: true }));
 
 async function loadByUrl(url: string, res: Response) {
-  const buffer = (await http.get(url, { responseType: "arraybuffer" })).data;
-  uploadImage(buffer, res);
+  console.log(colors.green("Начинаю закгрузку " + url));
+  const buffer = await http
+    .get(url, { responseType: "arraybuffer" })
+    .catch((err) => {
+      console.log(colors.yellow(url));
+      console.log(colors.red(err.message));
+      res.json({ name: "" });
+    });
+  if (!buffer) return console.log(colors.red("Нет буфера!"));
+  try {
+    return uploadImage(buffer.data, res, url);
+  } catch (err: any) {
+    res.json({ name: "" });
+    console.log(colors.red(err.message));
+  }
   return;
 }
 
-async function uploadImage(buffer: Buffer, res: Response) {
+async function uploadImage(buffer: Buffer, res: Response, url?: string) {
   const path = `${process.cwd()}/public/images`;
-  const data = await sharp(buffer).webp().toBuffer();
+  let data;
+  try {
+    data = await sharp(buffer).webp().toBuffer();
+  } catch (err: any) {
+    console.log(colors.red(err.message));
+  }
   const newName = shortid.generate();
   if (!fs.existsSync(path)) {
     fs.mkdirSync(path, { recursive: true });
   }
-  fs.appendFile(`${path}/${newName}.webp`, data, (err) => {
-    if (err) return res.status(500).send(err.message);
-    return res.json({ name: `${newName}.webp` });
-  });
+  try {
+    fs.appendFile(`${path}/${newName}.webp`, data, (err) => {
+      if (err) return console.log(colors.red(err.message));
+      return res.json({ name: `${newName}.webp`, url });
+    });
+    if (url) console.log(colors.green(`Загрузил картинку с ${url}`));
+  } catch (err: any) {
+    res.json({ name: "" });
+    console.log(colors.red(err.message));
+  }
 }
 
 async function uploadPDF(buffer: Buffer, res: Response) {
