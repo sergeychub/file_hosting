@@ -11,6 +11,8 @@ const cors = require("cors");
 
 app.use(cors());
 app.use(express.json());
+app.use(express.json({ limit: "50mb" }));
+app.use(express.urlencoded({ limit: "50mb" }));
 app.use(fileUpload());
 
 app.use(express.static("public"));
@@ -101,8 +103,6 @@ app.delete("/file", async (req, res) => {
   res.send("Файл удален!");
 });
 app.post("/upload", async (req, res) => {
-  console.log(req.files, "files");
-  console.log(req.body, "body");
   if (!req.files || !req.files.file || Array.isArray(req.files.file)) return;
   const mimetype = req.files.file.mimetype.split("/");
   const nameArray = req.files.file.name.split(".");
